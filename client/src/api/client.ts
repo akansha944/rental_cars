@@ -7,6 +7,12 @@ export const api = axios.create({
   withCredentials: true, // send refresh-token cookie
 });
 
+/** Public routes (signing page) — no cookies, simpler CORS on mobile browsers. */
+export const publicApi = axios.create({
+  baseURL: `${BASE_URL}/api`,
+  withCredentials: false,
+});
+
 let accessToken: string | null = localStorage.getItem('accessToken');
 
 export function setAccessToken(token: string | null) {

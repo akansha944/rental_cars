@@ -75,15 +75,12 @@ export default function RentalDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  useEffect(() => {
-    if (!id || !rental?.agreement) return;
-    const agreement = rental.agreement as Agreement;
-    if (agreement.status === 'signed') return;
-    rentalApi
-      .getSigningLink(id)
-      .then((r) => setSignLink(r.link))
-      .catch(() => undefined);
-  }, [id, rental]);
+  const fetchSignLink = async () => {
+    if (!id) return '';
+    const r = await rentalApi.getSigningLink(id);
+    setSignLink(r.link);
+    return r.link;
+  };
 
   const handleReturn = async () => {
     if (!id) return;
@@ -123,12 +120,14 @@ export default function RentalDetailPage() {
   };
 
   const handleCopyLink = async () => {
-    if (!signLink) return;
+    if (!id) return;
     try {
-      await navigator.clipboard.writeText(signLink);
-      setToast('Signing link copied — paste it in a text message or browser on any device.');
-    } catch {
-      setToast(signLink);
+      const link = signLink || (await fetchSignLink());
+      if (!link) return;
+      await navigator.clipboard.writeText(link);
+      setToast('Signing link copied — paste it in Safari/Chrome or send by text.');
+    } catch (err) {
+      setError(apiErrorMessage(err));
     }
   };
 
@@ -248,7 +247,7 @@ export default function RentalDetailPage() {
                   )}
                   {agreement.status !== 'signed' && (
                     <Stack spacing={1}>
-                      <Button variant="outlined" startIcon={<ContentCopyIcon />} onClick={handleCopyLink} disabled={!signLink}>
+                      <Button variant="outlined" startIcon={<ContentCopyIcon />} onClick={handleCopyLink}>
                         Copy signing link
                       </Button>
                       <Typography variant="caption" color="text.secondary">

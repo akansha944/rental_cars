@@ -1,4 +1,4 @@
-import { api } from './client';
+import { api, publicApi } from './client';
 import {
   AuthUser,
   Company,
@@ -138,7 +138,7 @@ export const agreementApi = {
   list: (params?: { status?: string }) =>
     api.get<Agreement[]>('/agreements', { params }).then((r) => r.data),
   getPublic: (token: string) =>
-    api
+    publicApi
       .get<{
         status: string;
         content: Record<string, unknown>;
@@ -148,7 +148,7 @@ export const agreementApi = {
       }>(`/public/agreements/${token}`)
       .then((r) => r.data),
   sign: (token: string, data: { signedName: string; signatureDataUrl: string; agree: true }) =>
-    api
+    publicApi
       .post<{ message: string; signedAt: string; signedPdfUrl?: string }>(
         `/public/agreements/${token}/sign`,
         data

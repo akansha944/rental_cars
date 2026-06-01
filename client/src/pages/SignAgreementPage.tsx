@@ -62,6 +62,14 @@ export default function SignAgreementPage() {
 
   useEffect(() => {
     if (!token) return;
+    const apiUrl = import.meta.env.VITE_API_URL || '';
+    const onLiveSite = !/localhost|127\.0\.0\.1/i.test(window.location.hostname);
+    if (onLiveSite && (!apiUrl || /localhost|127\.0\.0\.1/i.test(apiUrl))) {
+      setLoadError(
+        'This signing page cannot reach the server. The app may need VITE_API_URL set on Vercel — contact the rental company.'
+      );
+      return;
+    }
     agreementApi
       .getPublic(token)
       .then((data) => {
@@ -69,7 +77,16 @@ export default function SignAgreementPage() {
         setAlreadySigned(data.alreadySigned || data.status === 'signed');
         setSignedPdfUrl(data.signedPdfUrl);
       })
-      .catch((err) => setLoadError(apiErrorMessage(err)));
+      .catch((err) => {
+        const msg = apiErrorMessage(err);
+        if (msg === 'Network Error') {
+          setLoadError(
+            'Could not load this agreement (network error). Try opening the link in Safari or Chrome, or ask the company to resend the email.'
+          );
+        } else {
+          setLoadError(msg);
+        }
+      });
   }, [token]);
 
   const handleSubmit = async () => {

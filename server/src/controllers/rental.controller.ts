@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import crypto from 'crypto';
 import { customAlphabet } from 'nanoid';
 import { Rental } from '../models/Rental';
 import { Vehicle } from '../models/Vehicle';
@@ -15,7 +14,6 @@ import {
   AgreementStatus,
 } from '../models/types';
 import { ApiError } from '../utils/ApiError';
-import { hashToken } from '../utils/token';
 import {
   createAgreementForRental,
   sendAgreement,
@@ -225,17 +223,15 @@ export async function getSigningLink(req: Request, res: Response) {
 
   let raw = agreement.signTokenRaw;
   if (!raw) {
-    raw = crypto.randomBytes(32).toString('hex');
-    agreement.signToken = hashToken(raw);
-    agreement.signTokenRaw = raw;
-    agreement.tokenExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-    await agreement.save();
+    throw ApiError.badRequest(
+      'This agreement has no copyable link yet. Use "Resend signing link" to email a fresh link.'
+    );
   }
 
   res.json({ link: buildSigningLink(raw) });
 }
 
-// POST /api/rentals/:id/resend-agreement
+// POST /api/rentals/:id/resend-agreement — re-email the SAME link (does not invalidate old emails).
 export async function resendAgreement(req: Request, res: Response) {
   const companyId = req.auth!.companyId;
   const rental = await Rental.findOne({ _id: req.params.id, company: companyId });
@@ -248,16 +244,25 @@ export async function resendAgreement(req: Request, res: Response) {
   ]);
   if (!company || !customer || !vehicle) throw ApiError.notFound('Related record missing');
 
-  // Delete old agreement and create a fresh one (new token)
-  if (rental.agreement) await Agreement.deleteOne({ _id: rental.agreement });
-  const { agreement, rawToken } = await createAgreementForRental(
-    rental,
-    company,
-    customer,
-    vehicle
-  );
-  rental.agreement = agreement._id;
-  await rental.save();
+  let agreement = rental.agreement
+    ? await Agreement.findOne({ _id: rental.agreement, company: companyId }).select('+signTokenRaw')
+    : null;
+
+  let rawToken: string;
+
+  if (agreement && agreement.status !== AgreementStatus.Signed && agreement.signTokenRaw) {
+    // Keep the same token so links already emailed still work.
+    rawToken = agreement.signTokenRaw;
+    agreement.tokenExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+    await agreement.save();
+  } else {
+    if (agreement) await Agreement.deleteOne({ _id: agreement._id });
+    const created = await createAgreementForRental(rental, company, customer, vehicle);
+    agreement = created.agreement;
+    rawToken = created.rawToken;
+    rental.agreement = agreement._id;
+    await rental.save();
+  }
 
   const result = await sendAgreement(agreement._id, rawToken, customer, company, rental);
   res.json({ message: 'Agreement re-sent', channels: result.channels, link: result.link });

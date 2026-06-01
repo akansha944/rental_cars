@@ -10,6 +10,21 @@ import apiRoutes from './routes';
 import { notFound, errorHandler } from './middleware/error';
 import { LOCAL_DIR } from './utils/storage';
 
+/** True when two origins are the same site (ignores trailing slash and optional www). */
+function originsMatch(a: string, b: string): boolean {
+  const na = normalizeClientUrl(a);
+  const nb = normalizeClientUrl(b);
+  if (na === nb) return true;
+  try {
+    const ua = new URL(na);
+    const ub = new URL(nb);
+    const host = (h: string) => h.replace(/^www\./i, '');
+    return ua.protocol === ub.protocol && host(ua.hostname) === host(ub.hostname);
+  } catch {
+    return false;
+  }
+}
+
 export function createApp() {
   const app = express();
 
@@ -28,9 +43,12 @@ export function createApp() {
         if (!env.isProd && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
           return callback(null, true);
         }
-        // In production, only the configured client URL is allowed (ignore trailing slash).
-        if (origin && normalizeClientUrl(origin) === normalizeClientUrl(env.clientUrl)) {
+        // In production, allow the configured client URL (www / trailing slash tolerant).
+        if (origin && originsMatch(origin, env.clientUrl)) {
           return callback(null, true);
+        }
+        if (env.isProd) {
+          console.warn(`[cors] Blocked origin: ${origin} (expected ${env.clientUrl})`);
         }
         return callback(new Error(`Origin not allowed by CORS: ${origin}`));
       },
