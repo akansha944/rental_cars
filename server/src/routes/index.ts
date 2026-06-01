@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { env } from '../config/env';
 import authRoutes from './auth.routes';
 import companyRoutes from './company.routes';
 import userRoutes from './user.routes';
