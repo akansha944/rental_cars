@@ -41,6 +41,12 @@ export async function createUser(req: Request, res: Response) {
     throw ApiError.forbidden('Only an owner can create another owner');
   }
 
+  // Email is the global login key — it must be unique across all companies.
+  const existing = await User.findOne({ email: data.email.toLowerCase() });
+  if (existing) {
+    throw ApiError.conflict('A user with this email already exists.');
+  }
+
   const user = await User.create({
     company: req.auth!.companyId,
     name: data.name,

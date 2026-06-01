@@ -13,6 +13,11 @@ import { LOCAL_DIR } from './utils/storage';
 export function createApp() {
   const app = express();
 
+  // Render (and most hosts) put the app behind a reverse proxy, which sets the
+  // X-Forwarded-For header. Trust the first proxy hop so express-rate-limit can
+  // identify the real client IP. Only in production to avoid local spoofing.
+  if (env.isProd) app.set('trust proxy', 1);
+
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   app.use(
     cors({

@@ -48,7 +48,17 @@ export default function SignupPage() {
       </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
+          action={
+            /already exists/i.test(error) ? (
+              <Button color="inherit" size="small" component={RouterLink} to="/login">
+                Sign in
+              </Button>
+            ) : undefined
+          }
+        >
           {error}
         </Alert>
       )}

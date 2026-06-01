@@ -76,6 +76,13 @@ function publicUser(user: {
 export async function signup(req: Request, res: Response) {
   const data = signupSchema.parse(req.body);
 
+  // One email = one account. Reject if this email is already registered
+  // anywhere, so a duplicate signup can't silently create a second workspace.
+  const existing = await User.findOne({ email: data.email.toLowerCase() });
+  if (existing) {
+    throw ApiError.conflict('An account with this email already exists. Please log in instead.');
+  }
+
   const company = await Company.create({
     name: data.companyName,
     email: data.companyEmail.toLowerCase(),
