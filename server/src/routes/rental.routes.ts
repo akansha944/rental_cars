@@ -7,6 +7,7 @@ import {
   createRental,
   returnRental,
   updatePayment,
+  getSigningLink,
   resendAgreement,
 } from '../controllers/rental.controller';
 
@@ -14,6 +15,7 @@ const router = Router();
 router.use(requireAuth);
 
 router.get('/', asyncHandler(listRentals));
+router.get('/:id/signing-link', asyncHandler(getSigningLink));
 router.get('/:id', asyncHandler(getRental));
 router.post('/', asyncHandler(createRental));
 router.post('/:id/return', asyncHandler(returnRental));

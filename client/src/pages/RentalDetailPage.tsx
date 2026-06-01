@@ -22,6 +22,7 @@ import {
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import SendIcon from '@mui/icons-material/Send';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import { rentalApi } from '../api/endpoints';
 import { Rental, Customer, Vehicle, Agreement, FuelLevel, PaymentStatus } from '../types';
@@ -47,6 +48,7 @@ export default function RentalDetailPage() {
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
   const [returnOpen, setReturnOpen] = useState(false);
+  const [signLink, setSignLink] = useState('');
 
   // Return form
   const [returnOdometer, setReturnOdometer] = useState('');
@@ -73,6 +75,16 @@ export default function RentalDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  useEffect(() => {
+    if (!id || !rental?.agreement) return;
+    const agreement = rental.agreement as Agreement;
+    if (agreement.status === 'signed') return;
+    rentalApi
+      .getSigningLink(id)
+      .then((r) => setSignLink(r.link))
+      .catch(() => undefined);
+  }, [id, rental]);
+
   const handleReturn = async () => {
     if (!id) return;
     setBusy(true);
@@ -98,6 +110,7 @@ export default function RentalDetailPage() {
     if (!id) return;
     try {
       const res = await rentalApi.resendAgreement(id);
+      setSignLink(res.link);
       await load();
       setToast(
         res.channels.length
@@ -106,6 +119,16 @@ export default function RentalDetailPage() {
       );
     } catch (err) {
       setError(apiErrorMessage(err));
+    }
+  };
+
+  const handleCopyLink = async () => {
+    if (!signLink) return;
+    try {
+      await navigator.clipboard.writeText(signLink);
+      setToast('Signing link copied — paste it in a text message or browser on any device.');
+    } catch {
+      setToast(signLink);
     }
   };
 
@@ -224,9 +247,17 @@ export default function RentalDetailPage() {
                     </Button>
                   )}
                   {agreement.status !== 'signed' && (
-                    <Button variant="text" startIcon={<SendIcon />} onClick={handleResend}>
-                      Resend signing link
-                    </Button>
+                    <Stack spacing={1}>
+                      <Button variant="outlined" startIcon={<ContentCopyIcon />} onClick={handleCopyLink} disabled={!signLink}>
+                        Copy signing link
+                      </Button>
+                      <Typography variant="caption" color="text.secondary">
+                        Use this if the email link doesn't open on a phone or tablet — paste it in Safari/Chrome or send by text.
+                      </Typography>
+                      <Button variant="text" startIcon={<SendIcon />} onClick={handleResend}>
+                        Resend signing link
+                      </Button>
+                    </Stack>
                   )}
                 </Stack>
               ) : (

@@ -72,6 +72,7 @@ export async function signPublicAgreement(req: Request, res: Response) {
     ipAddress: req.ip,
     userAgent: req.headers['user-agent'],
   };
+  agreement.signTokenRaw = undefined;
   await agreement.save();
 
   const reference = rental?.reference ?? '';

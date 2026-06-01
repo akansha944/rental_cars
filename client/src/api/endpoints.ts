@@ -118,6 +118,8 @@ export const rentalApi = {
         `/rentals/${id}/resend-agreement`
       )
       .then((r) => r.data),
+  getSigningLink: (id: string) =>
+    api.get<{ link: string }>(`/rentals/${id}/signing-link`).then((r) => r.data),
 };
 
 // ── Company ────────────────────────────────────────────

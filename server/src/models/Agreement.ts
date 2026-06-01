@@ -9,8 +9,9 @@ export interface IAgreement extends Document {
   customer: Types.ObjectId;
   status: AgreementStatus;
 
-  // Public signing token (hashed in DB, raw sent in link)
+  // Public signing token (hashed in DB for lookup; raw kept for staff copy-link only)
   signToken: string;
+  signTokenRaw?: string;
   tokenExpiresAt: Date;
 
   // Snapshot of agreement content at generation time
@@ -46,6 +47,7 @@ const agreementSchema = new Schema<IAgreement>(
     },
 
     signToken: { type: String, index: true },
+    signTokenRaw: { type: String, select: false },
     tokenExpiresAt: { type: Date },
 
     contentSnapshot: { type: Schema.Types.Mixed, default: {} },

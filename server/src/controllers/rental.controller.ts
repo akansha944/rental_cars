@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
+import crypto from 'crypto';
 import { customAlphabet } from 'nanoid';
 import { Rental } from '../models/Rental';
 import { Vehicle } from '../models/Vehicle';
@@ -11,11 +12,14 @@ import {
   RentalStatus,
   PaymentStatus,
   FuelLevel,
+  AgreementStatus,
 } from '../models/types';
 import { ApiError } from '../utils/ApiError';
+import { hashToken } from '../utils/token';
 import {
   createAgreementForRental,
   sendAgreement,
+  buildSigningLink,
 } from '../services/agreement.service';
 
 const refId = customAlphabet('0123456789ABCDEFGHJKLMNPQRSTUVWXYZ', 5);
@@ -145,7 +149,7 @@ export async function createRental(req: Request, res: Response) {
     const result = await sendAgreement(agreement._id, rawToken, customer, company, rental);
     signingLink = result.link;
   } else {
-    signingLink = `${process.env.CLIENT_URL ?? ''}/sign/${rawToken}`;
+    signingLink = buildSigningLink(rawToken);
   }
 
   const populated = await rental.populate([
@@ -202,6 +206,33 @@ export async function updatePayment(req: Request, res: Response) {
   );
   if (!rental) throw ApiError.notFound('Rental not found');
   res.json(rental);
+}
+
+// GET /api/rentals/:id/signing-link — copyable link for staff (does not send email).
+export async function getSigningLink(req: Request, res: Response) {
+  const rental = await Rental.findOne({ _id: req.params.id, company: req.auth!.companyId });
+  if (!rental?.agreement) throw ApiError.notFound('Rental or agreement not found');
+
+  const agreement = await Agreement.findOne({
+    _id: rental.agreement,
+    company: req.auth!.companyId,
+  }).select('+signTokenRaw');
+
+  if (!agreement) throw ApiError.notFound('Agreement not found');
+  if (agreement.status === AgreementStatus.Signed) {
+    throw ApiError.badRequest('This agreement has already been signed');
+  }
+
+  let raw = agreement.signTokenRaw;
+  if (!raw) {
+    raw = crypto.randomBytes(32).toString('hex');
+    agreement.signToken = hashToken(raw);
+    agreement.signTokenRaw = raw;
+    agreement.tokenExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+    await agreement.save();
+  }
+
+  res.json({ link: buildSigningLink(raw) });
 }
 
 // POST /api/rentals/:id/resend-agreement

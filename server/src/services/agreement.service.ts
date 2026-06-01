@@ -108,6 +108,7 @@ export async function createAgreementForRental(
     customer: customer._id,
     status: AgreementStatus.Draft,
     signToken: hashToken(rawToken),
+    signTokenRaw: rawToken,
     tokenExpiresAt,
     contentSnapshot: pdfData as unknown as Record<string, unknown>,
     unsignedPdf,
@@ -124,8 +125,14 @@ export async function sendAgreement(
   company: ICompany,
   rental: IRental
 ) {
-  const link = `${env.clientUrl}/sign/${rawToken}`;
+  const link = buildSigningLink(rawToken);
   const channels: ('email' | 'sms')[] = [];
+
+  if (env.isProd && /localhost|127\.0\.0\.1/i.test(env.clientUrl)) {
+    console.warn(
+      '[agreement] CLIENT_URL is localhost in production — email links will NOT work on phones/tablets. Set CLIENT_URL to your Vercel URL on Render.'
+    );
+  }
 
   // Delivery failures (e.g. an unverified SendGrid sender) must NOT abort
   // rental creation — log them and carry on. The signing link is always
@@ -136,19 +143,17 @@ export async function sendAgreement(
         to: customer.email,
         fromName: company.name,
         subject: `Your rental agreement from ${company.name}`,
-        html: `
-        <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto">
-          <h2 style="color:#1565C0">${company.name}</h2>
-          <p>Hi ${customer.fullName},</p>
-          <p>Your rental agreement (ref <strong>${rental.reference}</strong>) is ready to sign.
-          Please review and sign it using the secure link below:</p>
-          <p style="text-align:center;margin:28px 0">
-            <a href="${link}" style="background:#1565C0;color:#fff;padding:12px 24px;
-            border-radius:6px;text-decoration:none">Review &amp; Sign Agreement</a>
-          </p>
-          <p style="color:#666;font-size:13px">This link expires in 14 days. If you didn't
-          expect this email, you can ignore it.</p>
-        </div>`,
+        html: buildAgreementEmailHtml(company.name, customer.fullName, rental.reference, link),
+        text: [
+          `Hi ${customer.fullName},`,
+          '',
+          `Your rental agreement from ${company.name} (ref ${rental.reference}) is ready to sign.`,
+          '',
+          `Open this link to review and sign:`,
+          link,
+          '',
+          'This link expires in 14 days.',
+        ].join('\n'),
       });
       channels.push('email');
     } catch (err) {
@@ -200,4 +205,38 @@ export async function generateSignedPdf(
     mimeType: 'application/pdf',
   });
   return { file, buffer: pdfBuffer };
+}
+
+/** Public signing URL — always uses the configured CLIENT_URL. */
+export function buildSigningLink(rawToken: string): string {
+  const base = env.clientUrl.replace(/\/$/, '');
+  return `${base}/sign/${rawToken}`;
+}
+
+function buildAgreementEmailHtml(
+  companyName: string,
+  customerName: string,
+  reference: string,
+  link: string
+): string {
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#111">
+      <h2 style="color:#4F46E5">${companyName}</h2>
+      <p>Hi ${customerName},</p>
+      <p>Your rental agreement (ref <strong>${reference}</strong>) is ready to sign.
+      Please review and sign it using the secure link below:</p>
+      <p style="text-align:center;margin:28px 0">
+        <a href="${link}" style="background:#4F46E5;color:#fff;padding:14px 28px;
+        border-radius:8px;text-decoration:none;display:inline-block;font-weight:600">
+          Review &amp; Sign Agreement
+        </a>
+      </p>
+      <p style="color:#666;font-size:13px;line-height:1.6">
+        If the button above doesn't work on your phone, copy and paste this link into Safari or Chrome:
+      </p>
+      <p style="word-break:break-all;font-size:13px;background:#f4f6f8;padding:12px;border-radius:6px">
+        <a href="${link}" style="color:#4F46E5">${link}</a>
+      </p>
+      <p style="color:#666;font-size:13px">This link expires in 14 days.</p>
+    </div>`;
 }
