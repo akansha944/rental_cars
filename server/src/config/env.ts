@@ -14,6 +14,30 @@ function optional(name: string, fallback = ''): string {
   return process.env[name] ?? fallback;
 }
 
+/** Strip trailing slashes so https://app.com and https://app.com/ match everywhere. */
+export function normalizeClientUrl(url: string): string {
+  return url.trim().replace(/\/+$/, '');
+}
+
+/** Warn loudly in production when CLIENT_URL would break signing links on phones. */
+export function validateClientUrl(url: string, isProd: boolean): void {
+  if (!isProd) return;
+  const u = normalizeClientUrl(url);
+  if (/localhost|127\.0\.0\.1/i.test(u)) {
+    console.error(
+      '[env] CLIENT_URL is localhost — signing links in emails will NOT work on phones/tablets. Set it to your Vercel URL on Render.'
+    );
+  }
+  if (/onrender\.com|render\.com/i.test(u)) {
+    console.error(
+      '[env] CLIENT_URL points at Render (the API). It must be your Vercel FRONTEND URL, e.g. https://your-app.vercel.app'
+    );
+  }
+  if (!u.startsWith('https://')) {
+    console.warn('[env] CLIENT_URL should use https:// in production for email links to work on mobile.');
+  }
+}
+
 export const env = {
   nodeEnv: optional('NODE_ENV', 'development'),
   isProd: optional('NODE_ENV', 'development') === 'production',
@@ -28,7 +52,7 @@ export const env = {
     refreshExpires: optional('JWT_REFRESH_EXPIRES', '30d'),
   },
 
-  clientUrl: optional('CLIENT_URL', 'http://localhost:5173'),
+  clientUrl: normalizeClientUrl(optional('CLIENT_URL', 'http://localhost:5173')),
 
   cloudinary: {
     cloudName: optional('CLOUDINARY_CLOUD_NAME'),

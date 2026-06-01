@@ -139,6 +139,9 @@ export async function sendAgreement(
   // available from the rental detail page regardless.
   if (customer.email) {
     try {
+      console.log(
+        `[agreement] Sending signing email to ${customer.email} | link=${link} | CLIENT_URL=${env.clientUrl}`
+      );
       await sendEmail({
         to: customer.email,
         fromName: company.name,

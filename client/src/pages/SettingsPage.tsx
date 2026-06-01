@@ -36,6 +36,7 @@ import HelpIcon from '@mui/icons-material/HelpOutlineOutlined';
 import UploadIcon from '@mui/icons-material/Upload';
 import PersonAddIcon from '@mui/icons-material/PersonAddAlt1';
 import { companyApi, userApi, authApi } from '../api/endpoints';
+import { api } from '../api/client';
 import { Company, TeamMember, UserRole } from '../types';
 import { PageHeader, formatDate } from '../components/common';
 import { useAuth } from '../context/AuthContext';
@@ -60,6 +61,7 @@ export default function SettingsPage() {
   const isOwner = user?.role === 'owner';
 
   const [tab, setTab] = useState<'company' | 'team' | 'security' | 'support'>('company');
+  const [signingLinkBase, setSigningLinkBase] = useState('');
 
   // ── Team state ──
   const [team, setTeam] = useState<TeamMember[]>([]);
@@ -76,7 +78,18 @@ export default function SettingsPage() {
     if (user?.role === 'owner' || user?.role === 'manager') {
       userApi.list().then(setTeam).catch(() => undefined);
     }
+    api
+      .get<{ clientUrl: string }>('/health')
+      .then((r) => setSigningLinkBase(r.data.clientUrl.replace(/\/+$/, '')))
+      .catch(() => undefined);
   }, [user?.role]);
+
+  const liveOrigin =
+    typeof window !== 'undefined' ? window.location.origin.replace(/\/+$/, '') : '';
+  const linkConfigBad =
+    signingLinkBase &&
+    (/localhost|127\.0\.0\.1|onrender\.com/i.test(signingLinkBase) ||
+      (liveOrigin && !liveOrigin.includes('localhost') && signingLinkBase !== liveOrigin));
 
   const set = (key: keyof Company) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setCompany((c) => (c ? { ...c, [key]: e.target.value } : c));
@@ -214,6 +227,19 @@ export default function SettingsPage() {
         {tab === 'company' && (
         <Card>
           <CardContent>
+            {linkConfigBad && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                Agreement email links are configured as <strong>{signingLinkBase}</strong> but you
+                are using <strong>{liveOrigin || 'this site'}</strong>. Email links may not open on
+                phones. In Render, set <strong>CLIENT_URL</strong> to your exact Vercel URL (no
+                trailing slash), then create a new rental.
+              </Alert>
+            )}
+            {signingLinkBase && !linkConfigBad && (
+              <Alert severity="success" sx={{ mb: 2 }}>
+                Agreement email links use: <strong>{signingLinkBase}</strong> — matches this site.
+              </Alert>
+            )}
             <Typography variant="h6" gutterBottom>
               Company profile
             </Typography>

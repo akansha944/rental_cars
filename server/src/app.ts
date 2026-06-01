@@ -5,7 +5,7 @@ import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
-import { env } from './config/env';
+import { env, normalizeClientUrl } from './config/env';
 import apiRoutes from './routes';
 import { notFound, errorHandler } from './middleware/error';
 import { LOCAL_DIR } from './utils/storage';
@@ -28,8 +28,10 @@ export function createApp() {
         if (!env.isProd && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
           return callback(null, true);
         }
-        // In production, only the configured client URL is allowed.
-        if (origin === env.clientUrl) return callback(null, true);
+        // In production, only the configured client URL is allowed (ignore trailing slash).
+        if (origin && normalizeClientUrl(origin) === normalizeClientUrl(env.clientUrl)) {
+          return callback(null, true);
+        }
         return callback(new Error(`Origin not allowed by CORS: ${origin}`));
       },
       credentials: true,
@@ -48,6 +50,11 @@ export function createApp() {
 
   // Serve locally-stored uploads when Cloudinary is not configured.
   app.use('/uploads', express.static(LOCAL_DIR));
+
+  // If a signing link ever points at the API host by mistake, redirect to the frontend.
+  app.get('/sign/:token', (req, res) => {
+    res.redirect(302, `${env.clientUrl}/sign/${req.params.token}`);
+  });
 
   app.use('/api', apiRoutes);
 

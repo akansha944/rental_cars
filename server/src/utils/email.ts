@@ -43,6 +43,12 @@ export async function sendEmail(msg: EmailMessage): Promise<void> {
       subject: msg.subject,
       html: msg.html,
       text: msg.text ?? stripHtml(msg.html),
+      // SendGrid click-tracking rewrites hrefs through sendgrid.net — this often
+      // breaks signing links on mobile mail apps. Keep links direct.
+      trackingSettings: {
+        clickTracking: { enable: false, enableText: false },
+        openTracking: { enable: false },
+      },
       attachments: msg.attachments?.map((a) => ({
         filename: a.filename,
         content: a.content.toString('base64'),

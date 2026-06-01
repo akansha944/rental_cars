@@ -11,7 +11,14 @@ import { agreementRouter, publicAgreementRouter } from './agreement.routes';
 
 const router = Router();
 
-router.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
+router.get('/health', (_req, res) =>
+  res.json({
+    status: 'ok',
+    time: new Date().toISOString(),
+    // Helps verify Render CLIENT_URL matches your Vercel site (used in email links).
+    clientUrl: env.clientUrl,
+  })
+);
 
 router.use('/auth', authRoutes);
 router.use('/company', companyRoutes);
