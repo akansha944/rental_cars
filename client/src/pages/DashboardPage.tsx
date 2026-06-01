@@ -248,17 +248,11 @@ export default function DashboardPage() {
               ) : (
                 <List>
                   {expiringDocs.map((v) => (
-                    <ListItem
-                      key={v.vehicleId}
-                      secondaryAction={
-                        <Button size="small" component={RouterLink} to="/vehicles">
-                          View
-                        </Button>
-                      }
-                      sx={{ px: 0 }}
-                    >
+                    <ListItem key={v.vehicleId} disableGutters sx={{ px: 0, alignItems: 'flex-start', gap: 1 }}>
                       <ListItemText
+                        sx={{ m: 0, flex: 1, minWidth: 0 }}
                         primary={`${v.plateNumber} — ${v.label}`}
+                        secondaryTypographyProps={{ component: 'div' }}
                         secondary={
                           <Stack direction="row" spacing={1} mt={0.5} flexWrap="wrap" useFlexGap>
                             {v.items.map((it) => (
@@ -274,6 +268,9 @@ export default function DashboardPage() {
                           </Stack>
                         }
                       />
+                      <Button size="small" component={RouterLink} to="/vehicles" sx={{ flexShrink: 0, mt: 0.25 }}>
+                        View
+                      </Button>
                     </ListItem>
                   ))}
                 </List>
@@ -302,19 +299,15 @@ export default function DashboardPage() {
                     const cust = r.customer as Customer;
                     const veh = r.vehicle as Vehicle;
                     return (
-                      <ListItem
-                        key={r._id}
-                        secondaryAction={
-                          <Button size="small" component={RouterLink} to={`/rentals/${r._id}`}>
-                            Open
-                          </Button>
-                        }
-                        sx={{ px: 0 }}
-                      >
+                      <ListItem key={r._id} disableGutters sx={{ px: 0, alignItems: 'flex-start', gap: 1 }}>
                         <ListItemText
+                          sx={{ m: 0, flex: 1, minWidth: 0 }}
                           primary={`${cust?.fullName ?? 'Customer'} — ${veh?.plateNumber ?? ''}`}
                           secondary={`Due ${formatDate(r.returnDate)}`}
                         />
+                        <Button size="small" component={RouterLink} to={`/rentals/${r._id}`} sx={{ flexShrink: 0, mt: 0.25 }}>
+                          Open
+                        </Button>
                       </ListItem>
                     );
                   })}

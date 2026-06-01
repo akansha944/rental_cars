@@ -75,7 +75,7 @@ export default function LandingPage() {
   if (user) return <Navigate to="/dashboard" replace />;
 
   return (
-    <Box sx={{ bgcolor: 'background.default' }}>
+    <Box sx={{ bgcolor: 'background.default', overflowX: 'hidden' }}>
       {/* ── Nav ───────────────────────────────────────── */}
       <Box
         component="header"
@@ -113,7 +113,12 @@ export default function LandingPage() {
               <IconButton onClick={toggle} size="small">
                 {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
               </IconButton>
-              <Button component={RouterLink} to="/login" color="inherit">
+              <Button
+                component={RouterLink}
+                to="/login"
+                color="inherit"
+                sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+              >
                 Sign in
               </Button>
               <Button component={RouterLink} to="/signup" variant="contained">
@@ -157,7 +162,7 @@ export default function LandingPage() {
                 Sign in
               </Button>
             </Stack>
-            <Stack direction="row" spacing={3} sx={{ mt: 4 }}>
+            <Stack direction="row" spacing={3} sx={{ mt: 4, flexWrap: 'wrap', rowGap: 1 }}>
               {['No credit card', 'Setup in minutes', 'Cancel anytime'].map((t) => (
                 <Stack key={t} direction="row" spacing={0.75} alignItems="center">
                   <CheckCircleRoundedIcon sx={{ fontSize: 18, color: 'success.main' }} />
